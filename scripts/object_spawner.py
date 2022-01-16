@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import rospy
 import rospkg
@@ -9,22 +9,41 @@ from tf.transformations import quaternion_from_euler
 from math import pi
 import random
 import sys
+from dataclasses import dataclass
 
 
-class Model(object):
-    def __init__(self, **entries): 
-        self.__dict__.update(entries)
+@dataclass
+class Model:
+    # name of the file (without ending)
+    name: str
 
-    def __repr__(self):
-       return '{}({!r}, {!r}, {!r})'.format(
-           self.__class__.__name__,
-           self.name,self.type,self.package)
+    # 'box', 'sphere', 'urdf' or 'sdf'
+    type: str
 
-    def __unicode__(self):
-        return u'name: %s, type: %s, package: %s' % (self.name,self.type,self.package)
+    # base path in the package, something like "model"
+    base_path: str = ''
 
-    def __str__(self):
-        return unicode(self).encode('utf-8')
+    # unique name (will be generated)
+    _unique_name: str = None
+
+    # name of the ROS package (empty for "box")
+    package: str = ''
+
+    # defines if the pose rotation is a quaternion or a list of euler angles
+    quaternion: bool = False
+
+    # we assume pitch yaw an roll in degree if quaternions are NOT used,
+    # so we need to convert to radians
+    radians: bool = False
+
+    # position and orientation of the object in the world
+    # (quaternion or pitch, roll, yaw vector)
+    pose: list = None
+
+    # scale of the object
+    # (will not be used if None, otherwise a vector with depth, width, height)
+    scale: list = None
+
 
 def rename_duplicates( old ):
     """
@@ -60,14 +79,14 @@ def parse_yaml(package_name,yaml_relative_path):
     rospy.loginfo("List of model names: %s" % modelNamesUnique)
     rospy.logdebug("Total number of models: ", len(yaml_dict['models']))
 
-    # create a dict of Model objects where each key is the name of the model
-    model_dict = {name: Model() for name in modelNamesUnique}
+    # start with an empty dict where the key is the model name
+    model_dict = {}
     # create list containing all nested dictionaries that hold data about each model   
     list_of_dict = [x for x in yaml_dict['models']]
     # parse YAML dictionary entries to Model class object attributes
     for idx, name in enumerate(modelNamesUnique):
         args = list_of_dict[idx]
-        model_dict[name] = Model(**args)
+        model_dict[name] = Model(**args)  # fill the dict with models
 
     # add a unique model name that can be used to spawn an model in simulation
     count = 0
@@ -89,14 +108,14 @@ def spawn_model(model_object):
     spawn_pose.position.x = model_object.pose[0]
     spawn_pose.position.y = model_object.pose[1]
     spawn_pose.position.z = model_object.pose[2]
-    if hasattr(model_object, 'quaternion') and model_object.quaternion:
+    if model_object.quaternion:
         quat = model_object.pose[3:]
     else:
         # conversion from Euler angles (RPY) in degrees or radians
         roll = model_object.pose[3]
         pitch = model_object.pose[4]
         yaw = model_object.pose[5]
-        if not hasattr(model_object, 'radians') or not model_object.radians:
+        if not model_object.radians:
             degrees2rad = pi / 180.0
             roll *= degrees2rad
             pitch *= degrees2rad
