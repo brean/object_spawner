@@ -1,0 +1,33 @@
+<?xml version='1.0'?>
+<sdf version='1.7'>
+  <model name='sphere'>
+    <pose>0 0 0 0 0 0</pose>
+    <link name='sphere_link'>
+      <collision name='sphere_collision'>
+        <geometry>
+          <sphere>
+            <radius>1.0</radius>
+          </sphere>
+        </geometry>
+      </collision>
+      <visual name='cube_visual'>
+        <geometry>
+          <sphere>
+            <radius>1.0</radius>
+          </sphere>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/Grey</name>
+          </script>
+          <ambient>1 1 1 1</ambient>
+        </material>
+        <meta>
+          <layer>0</layer>
+        </meta>
+      </visual>
+    </link>
+    <static>1</static>
+  </model>
+</sdf>
