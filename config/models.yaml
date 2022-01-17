@@ -1,4 +1,12 @@
 models:
+  - name: sphere
+    type: sdf
+    package: object_spawner
+    pose: [2, 2, 0, 0, 0, 0]
+  - name: cube
+    type: sdf
+    package: object_spawner
+    pose: [3, 3, 0, 0, 0, 0]
   - name: beer
     type: sdf
     package: object_spawner
