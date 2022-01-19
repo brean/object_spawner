@@ -10,6 +10,7 @@ from math import pi
 import random
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 
 
 @dataclass
@@ -20,11 +21,11 @@ class Model:
     # 'box', 'sphere', 'urdf' or 'sdf'
     type: str
 
-    # base path in the package, something like "model"
-    base_path: str = ''
+    # base path inside the package, defaults to "models"
+    base_path: str = 'models'
 
-    # unique name (will be generated)
-    _unique_name: str = None
+    # unique name (will be generated if not set)
+    unique_name: str = None
 
     # name of the ROS package (empty for "box")
     package: str = ''
@@ -66,13 +67,22 @@ def parse_yaml(package_name,yaml_relative_path):
         name and path of the yaml file (string, relative path + complete name incl. file extension)
         Returns: dictionary with model objects
     """
-    complete_path = rospkg.RosPack().get_path(package_name)+yaml_relative_path
+    complete_path = Path(rospkg.RosPack().get_path(package_name))
+    if yaml_relative_path[0] == '/':
+        yaml_relative_path = yaml_relative_path[1:]
+    complete_path /= yaml_relative_path
     f = open(complete_path, 'r')
     # populate dictionary that equals to the yaml file tree data
     yaml_dict = load(f)
 
-    # create a list of the names of all models parsed
-    modelNames = [yaml_dict['models'][k]['name'] for k in range(len(yaml_dict['models']))]
+    modelNames = []
+    for k in range(len(yaml_dict['models'])):
+        model_data = yaml_dict['models'][k]
+        if 'unique_name' in model_data:
+            modelNames.append(model_data['unique_name'])
+        else:
+            modelNames.append(model_data['name'])
+
     # create new list with count numbers on all names that were duplicated
     modelNamesUnique = list(rename_duplicates(modelNames))
     
@@ -91,8 +101,9 @@ def parse_yaml(package_name,yaml_relative_path):
     # add a unique model name that can be used to spawn an model in simulation
     count = 0
     for dict_key, mod_obj in model_dict.items():
-        mod_obj.unique_name = modelNamesUnique[count] # add attribute 'unique_name'
-        count += 1
+        if not mod_obj.unique_name:
+            mod_obj.unique_name = modelNamesUnique[count] # add attribute 'unique_name'
+            count += 1
 
     return model_dict
 
@@ -130,13 +141,14 @@ def spawn_model(model_object):
     # Spawn SDF model
     if model_object.type == 'sdf':
         try:
-            model_path = rospkg.RosPack().get_path(package_name)+'/models/'
+            model_path = Path(rospkg.RosPack().get_path(package_name))
+            model_path /= model_object.base_path
             model_xml = ''
         except rospkg.ResourceNotFound as e:
             rospy.logerr("Cannot find package [%s], check package name and that package exists, error message:  %s"%(package_name, e))
 
         try:
-            with open(model_path + model_object.name + '/model.sdf', 'r') as xml_file:
+            with open(model_path / model_object.name / 'model.sdf', 'r') as xml_file:
                 model_xml = xml_file.read().replace('\n', '')
         except IOError as err:
             rospy.logerr("Cannot find or open model [1] [%s], check model name and that model exists, I/O error message:  %s"%(model_object.name,err))
@@ -154,8 +166,8 @@ def spawn_model(model_object):
 
     elif model_object.type == "urdf":
         try:
-            model_path = rospkg.RosPack().get_path(package_name)+'/urdf/'
-            file_xml = open(model_path + model_object.name + '.' + model_object.type, 'r')
+            model_path = Path(rospkg.RosPack().get_path(package_name)) / 'urdf'
+            file_xml = open(model_path / model_object.name + '.' + model_object.type, 'r')
             model_xml = file_xml.read()
         except IOError as err:
             rospy.logerr("Cannot find model [2] [%s], check model name and that model exists, I/O error message:  %s"%(model_object.name,err))
