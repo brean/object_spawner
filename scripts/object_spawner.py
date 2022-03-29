@@ -4,7 +4,7 @@ import rospy
 import rospkg
 from gazebo_msgs.srv import SpawnModel
 from geometry_msgs.msg import Pose
-from yaml import load
+from yaml import safe_load
 from tf.transformations import quaternion_from_euler
 from math import pi
 import random
@@ -73,7 +73,7 @@ def parse_yaml(package_name,yaml_relative_path):
     complete_path /= yaml_relative_path
     f = open(complete_path, 'r')
     # populate dictionary that equals to the yaml file tree data
-    yaml_dict = load(f)
+    yaml_dict = safe_load(f)
 
     modelNames = []
     for k in range(len(yaml_dict['models'])):
